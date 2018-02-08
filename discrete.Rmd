@@ -9,6 +9,7 @@ For this exercise, explore looking at discrete character models. Note: they are 
 
 These are useful packages in this area (far from exhaustive list -- see the [CRAN task view](https://cran.r-project.org/web/views/Phylogenetics.html) for more). Rather than have to worry about do you have dependencies installed, etc. this will use the yearn package to load a package if you have it, or install and load it if you don't. In real life, you should have all the packages you need already installed and call with a `library()` call; best practices are evolving to use things like [https://rstudio.github.io/packrat/](packrat) to keep consistent package versions throughout an analysis.
 
+test
 
 ```{r, eval=TRUE}
 install.packages("yearn")
