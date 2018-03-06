@@ -25,16 +25,19 @@ yearn::yearn(corHMM)
 You'll need to get data into R in some way. Look at other phylometh assignments for how to get trees and data.
 
 ```{r, eval=TRUE}
-tree <- read.tree("____PATH_TO_TREE_OR_SOME_OTHER_WAY_OF_GETTING_A_TREE____")
-discrete.data <- read.csv(file="____PATH_TO_DATA_OR_SOME_OTHER_WAY_OF_GETTING_TRAITS____", stringsAsFactors=FALSE) #death to factors.
+tree <- read.tree("bacterial_tree.tre")
+discrete.data <- read.csv(file="discrete_traits.csv", stringsAsFactors=FALSE,row.names = 1) #death to factors.
 ```
 
 Data are often not right in some way. They might not match the taxa in your tree, there may be missing data, etc. `geiger::treedata` is a great function for getting a tree and data that match, but your data may need other cleaning. Do it as a function so it's repeatable.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 CleanData <- function(phy, data) {
-	#treedata() in Geiger is probably my favorite function in R.
+	cleaned <- treedata(phy,data,warnings=F)# in Geiger is probably my favorite function in R.
+	return(cleaned)
 }
+
+cleaned.discrete <- CleanData(tree,discrete.data)
 
 # Now write the code to use CleanData() to actually clean your data
 
@@ -42,41 +45,63 @@ CleanData <- function(phy, data) {
 
 It's critically important to LOOK at what you have. Are there weird values? Has the match between taxa and state gone correctly? Do you think you have binary data, but there's actually only state 1? Especially as data sets grow (yay), and are assembled using scripts rather than by error-prone, non-reproducable hands (double yay), scientists are increasingly less likely to deeply look at our data. That's bad -- don't be that person.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 VisualizeData <- function(phy, data) {
 	#Important here is to LOOK at your data before running it. Any weird values? Does it all make sense? What about your tree? Polytomies?
-
+  plot.phylo(phy)
     # Now write the code to use VisualizeData() to actually look at your data
-
 }
+
+VisualizeData(cleaned.discrete$phy,cleaned.discrete$data)
 ```
 
 First, let's use parsimony to look at ancestral states:
 
-```{r, eval=FALSE}
-cleaned.discrete.phyDat <- phangorn::phyDat(cleaned.discrete, type="______________") #phyDat is a data format used by phangorn
-anc.p <- phangorn::ancestral.pars(tree, cleaned.discrete.phyDat)
-plotAnc(tree, anc.p, 1)
+```{r, eval=T}
+cleaned.discrete.phyDat <- phangorn::phyDat(cleaned.discrete$data, type="USER",levels=c(0,1) ) #phyDat is a data format used by phangorn
+anc.p <- phangorn::ancestral.pars(cleaned.discrete$phy, cleaned.discrete.phyDat)
+plotAnc(cleaned.discrete$phy, anc.p, 1,pos=NULL)
 ```
 
 Do you see uncertainty? What does it mean?
+Based on the parsimony tree, it appears one of two things could have happened. Either the evolution of the Type-3 secretion system evolved multiple times (present for Bacillus subtilis, which separate from other bacteria that contain it) or was present at the root of the tree and was lost to many of the bacteria later on.  
 
 Now, plot the likelihood estimates.
 
-```{r, eval=FALSE}
-anc.ml <- ancestral.pml(pml(tree, cleaned.discrete.phyDat), type="ml")
-plotAnc(tree, anc.ml, 1)
+```{r, eval=T}
+anc.ml <- ancestral.pml(pml(cleaned.discrete$phy,cleaned.discrete.phyDat), type="ml")
+plotAnc(cleaned.discrete$phy, anc.ml, 1,pos=NULL)
 ```
 
 How does this differ from parsimony?
-
+Unlike the parsimony method, the ML approach allows for the possibility that the Type 3 Secretion System could have evolved much later in the tree (such as between E. coli and S. enterica). This leads to more uncertainty in the tree.
+ 
 Why does it differ from parsimony?
+These approaches are different because parsimony simply looks for the minimum number of changes. ML approaches maximize the likelihood and thus allows for the possibility that there may be uncertainty in later trees. Right now, it is difficult for me to interpret this tree. I know secretion systems are relatively costly for cells to assemble and use, so I don't know how likely it is for multiple species to evolve this secretion system independently. Previous work from the Graur group concluded Type 3 Secretion Systems may have evolved largely through horizontal gene transfer events, which might explain the apparent discrepancy B. subtillis. 
 
 What does uncertainty mean?
+In this case, uncertainty means we are unsure which character trait the ancestral nodes had. 
 
 Now, to the biological questions. For many of these, `corHMM` will be a useful package. Do the following analyses:
 
 1. How can you estimate transition rates between states? Do it.
+```{r, eval=T}
+discrete.data <- read.csv("discrete_traits.csv",stringsAsFactors = F)
+results <- corHMM(cleaned.discrete$phy,discrete.data[,c(1,2)],rate.cat = 1)
+```
+
 2. How could you examine if transition rates are equal?
+```{r, eval=T}
+print(results$solution)
+```
 3. Think about the Lewis (2001) MKV model. Are your traits all variable? Will using this make sense for your data? Try using it. Do results change?
+I'm only examining one character which is variable. This would make the MKV model appropriate. The branch lengths much longer for the groups that lack the Type 3 Secretion System. However, the tree looks worse because there is almost no resolution differentiating between most of the species. 
+
+```{r, eval=T}
+discrete.data <- read.csv("discrete_traits.csv",stringsAsFactors = F,row.names=1)
+mkv <- lewisMkv(cleaned.discrete$phy,discrete.data)
+VisualizeData(mkv$phy,mkv$data)
+```
+
 4. How could you test order of state evolution?
+Fix the individual nodes with a discrete character trait and see which combination maximizes the likelihood.
