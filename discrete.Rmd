@@ -2,7 +2,9 @@
 title: "DiscreteCharacters"
 author: "Brian O'Meara"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 For this exercise, explore looking at discrete character models. Note: they are not "discreet" character models -- they're actually pretty noisy. To check your work, click on the `knit` button in RStudio. Make sure to change `eval=FALSE` to `eval=TRUE` to run the code when `knit`ting.
@@ -22,19 +24,20 @@ yearn::yearn(phangorn)
 yearn::yearn(corHMM)
 ```
 
-You'll need to get data into R in some way. Look at other phylometh assignments for how to get trees and data.
+You'll need to get data into R in some way. Look at other phylometh assignments for how to get trees and data. Do larger seedshave increased germination rates due to seed predation than smaller seeds in arid scrubland? 
 
 ```{r, eval=TRUE}
-tree <- read.tree("____PATH_TO_TREE_OR_SOME_OTHER_WAY_OF_GETTING_A_TREE____")
-discrete.data <- read.csv(file="____PATH_TO_DATA_OR_SOME_OTHER_WAY_OF_GETTING_TRAITS____", stringsAsFactors=FALSE) #death to factors.
+tree <- read.nexus(file = "EFN_subst_5.nex") #EFN in legume
+discrete.data <- read.nexus.data(file="EFN_all_1.nex") #death to factors. #check for nexus format
 ```
 
 Data are often not right in some way. They might not match the taxa in your tree, there may be missing data, etc. `geiger::treedata` is a great function for getting a tree and data that match, but your data may need other cleaning. Do it as a function so it's repeatable.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 CleanData <- function(phy, data) {
-	#treedata() in Geiger is probably my favorite function in R.
+	treedata(phy,data) #in Geiger is probably my favorite function in R.
 }
+cleaned.discrete<-CleanData(tree,discrete.data)
 
 # Now write the code to use CleanData() to actually clean your data
 
@@ -42,41 +45,60 @@ CleanData <- function(phy, data) {
 
 It's critically important to LOOK at what you have. Are there weird values? Has the match between taxa and state gone correctly? Do you think you have binary data, but there's actually only state 1? Especially as data sets grow (yay), and are assembled using scripts rather than by error-prone, non-reproducable hands (double yay), scientists are increasingly less likely to deeply look at our data. That's bad -- don't be that person.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 VisualizeData <- function(phy, data) {
-	#Important here is to LOOK at your data before running it. Any weird values? Does it all make sense? What about your tree? Polytomies?
-
-    # Now write the code to use VisualizeData() to actually look at your data
+#Important here is to LOOK at your data before running it. Any weird values? Does it all make sense? What about your tree? Polytomies? # Now write the code to use VisualizeData() to actually look at your data
+  plot(phy)
+  print(data)
 
 }
+VisualizeData(tree,discrete.data)
 ```
 
 First, let's use parsimony to look at ancestral states:
 
-```{r, eval=FALSE}
-cleaned.discrete.phyDat <- phangorn::phyDat(cleaned.discrete, type="______________") #phyDat is a data format used by phangorn
+```{r, eval=TRUE}
+cleaned.discrete.phyDat <- phangorn::phyDat(cleaned.discrete[[2]], type="USER", levels=c(0,1)) #phyDat is a data format used by phangorn #error preventing knit
 anc.p <- phangorn::ancestral.pars(tree, cleaned.discrete.phyDat)
-plotAnc(tree, anc.p, 1)
+#pdf(file="phylogeny1.pdf")
+plotAnc(tree, anc.p, 1, cex=0.5)
+#dev.off()
 ```
 
-Do you see uncertainty? What does it mean?
+Do you see uncertainty? What does it mean? The character placement at each node is where the uncertainty lies. There may be more than one probable minimum number character state change along this tree. From what I can see, there is very little uncertainty within this cladogram at each node.    
 
 Now, plot the likelihood estimates.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 anc.ml <- ancestral.pml(pml(tree, cleaned.discrete.phyDat), type="ml")
 plotAnc(tree, anc.ml, 1)
 ```
 
-How does this differ from parsimony?
+How does this differ from parsimony? There seems to be a lot more uncertainty at each node across this whole cladogram! Seems to have much more uncertainty at deeper nodes in the tree than at the tips. 
 
-Why does it differ from parsimony?
+Why does it differ from parsimony? ML cannot infer different rates of substitutions on the branches and therefore can limit the infrence upon a particular character state. Especially if the branch length is short.
 
-What does uncertainty mean?
+What does uncertainty mean? I believe uncertainty in ML models are the same in a parsimony model. The error associated with estimating the charaachter state at the/each node.
 
 Now, to the biological questions. For many of these, `corHMM` will be a useful package. Do the following analyses:
 
 1. How can you estimate transition rates between states? Do it.
+```{r, eval=TRUE}
+devtools::install_github("thej022214/corHMM", dependencies = FALSE)
+discrete.df <- data.frame(taxon=names(discrete.data), trait=unlist(discrete.data), stringsAsFactors = FALSE)
+corHMM_output<-corHMM(tree,discrete.df,rate.cat=2,node.states="none") #data matrix containing species information #vague
+```
 2. How could you examine if transition rates are equal?
-3. Think about the Lewis (2001) MKV model. Are your traits all variable? Will using this make sense for your data? Try using it. Do results change?
+
+*looking at transition rate matrix
+corHMM_output
+
+3. Think about the Lewis (2001) MKV model. Are your traits all variable? Will using this make sense for your data? Try using it. 
+```{r, eval=TRUE}
+LewisMod<-lewisMkv(tree,discrete.df) #Do results change? Not sure what you would mean by traits all variable? It should just be two characters (0,1) presence or absence of EFN. There's variation in the structure of the EFN, but I have decoupled that out of this analysis I believe. The MK model appears to be gradualistic in change from one state to the next and doesn't seem to be realistic in terms of the biology in question. ###this took a very long time to run (an hour plus, so I stopped running it. Probably due to 839 tips! I would love to see what the output looks like. 
+```
 4. How could you test order of state evolution?
+```{r,eval=TRUE}
+zeroancstate<-corHMM(tree,discrete.df,rate.cat=2,node.states="none",root.p=1)
+oneancstate<-corHMM(tree,discrete.df,rate.cat=2,node.states="none",root.p=0) #compare models
+```
