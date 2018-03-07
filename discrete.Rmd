@@ -104,4 +104,4 @@ VisualizeData(mkv$phy,mkv$data)
 ```
 
 4. How could you test order of state evolution?
-Fix the individual nodes with a discrete character trait and see which combination maximizes the likelihood.
+Fix the individual inner nodes and calculate the likelihood as described in Pagel 1999. Measures of support for an ancestral state can be calculated using the likelihood ratio tests.
