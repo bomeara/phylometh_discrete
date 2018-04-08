@@ -25,12 +25,10 @@ yearn::yearn(corHMM)
 ```
 
 You'll need to get data into R in some way. Look at other phylometh assignments for how to get trees and data.
+
 ```{r, eval=TRUE}
-setwd("~/Downloads")
 library(ape)
-ttree<-read.tree("newer.tre")
-
-
+ttree<-read.tree(file="~/Downloads/newer.tre")
 
 ttree$tip.label
 bad.taxa <- ttree$tip.label[grepl("COI", ttree$tip.label)]
@@ -72,8 +70,8 @@ plot.phylo(pruned.tree)
 ```
 
 ```{r, eval=TRUE}
-setwd("~/Documents")
-OT<-read.csv("OTdiscrete.csv") 
+
+OT<-read.csv("~/Documents/OTdiscrete.csv") 
 ```
 
 Data are often not right in some way. They might not match the taxa in your tree, there may be missing data, etc. `geiger::treedata` is a great function for getting a tree and data that match, but your data may need other cleaning. Do it as a function so it's repeatable.
@@ -86,7 +84,7 @@ library(geiger)
 CleanData <- function(pruned.tree,OT.vector) {
   treedata(pruned.tree,OT.vector)
 }
-
+ 
 
 ```
 
@@ -110,10 +108,10 @@ OT.matrix<-as.matrix(OT.vector,ncol=1)
 Clean.OT<-as.phyDat(OT.matrix,type="USER",levels=c(0,1))
 
 anc.p <- ancestral.pars(pruned.tree, Clean.OT)
-plotAnc(pruned.tree, anc.p, 1, pos = "topright")
+anc.p
+plotAnc(tree = pruned.tree,data = anc.p)
 
-anc.p <- ancestral.pars(tree, cleaned.discrete.phyDat)
-plotAnc(tree, anc.p, 1)
+
 ```
 
 Do you see uncertainty? What does it mean?
@@ -148,7 +146,11 @@ OT.Transition.rates<-corHMM(pruned.tree,OT,rate.cat=2,node.states="none")
 
 ```
 2. How could you examine if transition rates are equal?
+```{r, eval=TRUE}
+print(OT.Transition.rates)
+```
 
+#
 
 3. Think about the Lewis (2001) MKV model. Are your traits all variable? Will using this make sense for your data? Try using it. Do results change?
 ```{r, eval=TRUE}
@@ -157,3 +159,8 @@ MKV.mod<-lewisMkv(pruned.tree,data = OT.matrix)
 
 4. How could you test order of state evolution?
 
+```{r, eval=TRUE}
+OTpresence<-corHMM(pruned.tree,OT.matrix,rate.cat=2,node.states="none",root.p=1)
+OTabsence<-corHMM(pruned.tree,OT.matrix,rate.cat=2,node.states="none",root.p=0)
+       
+```
